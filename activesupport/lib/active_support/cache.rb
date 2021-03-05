@@ -248,6 +248,14 @@ module ActiveSupport
       #   cache.exist?('foo') # => true
       #   cache.exist?('bar') # => false
       #
+      # Setting <tt>skip_if: ->(result) { boolean_value } </tt> will not cache nil result:
+      #
+      #   cache.fetch('foo') { File.read('employees.csv') }
+      #   cache.fetch('bar', skip_if: ->(file_content) { file_content.empty? }) do
+      #     File.read('employees.csv')
+      #   end
+      #   cache.exist?('foo') # => true
+      #   cache.exist?('bar') # => false
       #
       # Setting <tt>compress: false</tt> disables compression of the cache entry.
       #
@@ -752,8 +760,13 @@ module ActiveSupport
             yield(name)
           end
 
-          write(name, result, options) unless result.nil? && options[:skip_nil]
+          write(name, result, options) unless skip_saving_block_result_to_cache?(result, options)
           result
+        end
+
+        def skip_saving_block_result_to_cache?(result, options)
+          options[:skip_nil] && result.nil? ||
+            options[:skip_if] && options[:skip_if].call(result)
         end
     end
 
